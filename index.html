@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#1D9E75">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -12,48 +12,62 @@
   <title>VB Tracker</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; }
+    html, body { height: 100%; overflow: hidden; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: #fff;
       color: #000;
-      padding: 12px;
-      max-width: 480px;
-      margin: 0 auto;
     }
     @media (prefers-color-scheme: dark) {
       body { background: #1a1a1a; color: #f0f0f0; }
     }
+
+    /* ── setup screen (portrait, scrollable) ──────────────────────────── */
+    #setup {
+      height: 100%;
+      overflow-y: auto;
+      padding: 14px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* ── game screen (landscape, fixed, no scroll) ────────────────────── */
+    #game {
+      position: fixed;
+      inset: 0;
+      padding:
+        max(env(safe-area-inset-top),    6px)
+        max(env(safe-area-inset-right),  8px)
+        max(env(safe-area-inset-bottom), 6px)
+        max(env(safe-area-inset-left),   8px);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      overflow: hidden;
+    }
+
+    /* ── inputs & buttons ─────────────────────────────────────────────── */
     input {
-      display: block;
-      width: 100%;
-      padding: 8px 10px;
-      font-size: 14px;
-      border: 1px solid #ccc;
-      border-radius: 7px;
-      background: #fff;
-      color: #000;
-      outline: none;
+      display: block; width: 100%;
+      padding: 8px 10px; font-size: 14px; font-family: inherit;
+      border: 1px solid #ccc; border-radius: 7px;
+      background: #fff; color: #000; outline: none;
     }
     input:focus { border-color: #1D9E75; box-shadow: 0 0 0 3px rgba(29,158,117,.15); }
-    @media (prefers-color-scheme: dark) {
-      input { background: #2a2a2a; color: #f0f0f0; border-color: #444; }
-      input:focus { border-color: #5DCAA5; }
-    }
     button {
-      font-family: inherit;
-      font-size: 14px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      background: transparent;
-      color: inherit;
-      cursor: pointer;
+      font-family: inherit; font-size: 14px;
+      border-radius: 8px; border: 1px solid #ccc;
+      background: transparent; color: inherit; cursor: pointer;
       transition: opacity .1s;
     }
     button:active { opacity: .7; }
-    @media (prefers-color-scheme: dark) { button { border-color: #444; } }
+    @media (prefers-color-scheme: dark) {
+      input  { background: #2a2a2a; color: #f0f0f0; border-color: #444; }
+      input:focus { border-color: #5DCAA5; }
+      button { border-color: #444; }
+    }
 
-    /* chips */
+    /* ── chips ────────────────────────────────────────────────────────── */
     .chip { cursor: pointer; }
     .srv { background: #FAEEDA !important; border: 1.5px solid #BA7517 !important; }
     .srv .lbl { color: #854F0B; }
@@ -63,7 +77,7 @@
     .set .nm  { color: #3C3489; font-weight: 500; }
     .srv-badge, .set-badge {
       border-radius: 4px; font-size: 10px; padding: 1px 5px;
-      white-space: nowrap; display: inline-block;
+      white-space: nowrap; display: inline-block; flex-shrink: 0;
     }
     .srv-badge { background: #FAEEDA; color: #854F0B; border: 1px solid #BA7517; }
     .set-badge { background: #EEEDFE; color: #534AB7; border: 1px solid #7F77DD; }
@@ -79,34 +93,29 @@
 </head>
 <body>
 <div id="root"></div>
+
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-// ── service worker ──────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
 // ── wake lock ────────────────────────────────────────────────────────────────
 let wakeLock = null;
 async function acquireWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-    }
-  } catch(e) {}
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e) {}
 }
 function releaseWakeLock() {
   if (wakeLock) { wakeLock.release().catch(()=>{}); wakeLock = null; }
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && wakeLock === null) {
-    // re-acquire if page becomes visible and we were in game mode
-    if (window.__vbGameActive) acquireWakeLock();
-  }
+  if (document.visibilityState === 'visible' && window.__vbGameActive) acquireWakeLock();
 });
 
-// ── app ───────────────────────────────────────────────────────────────────────
+// ── orientation lock ─────────────────────────────────────────────────────────
+function lockOrientation(dir) {
+  try { screen.orientation?.lock(dir).catch(()=>{}); } catch(e) {}
+}
+
 const { useState, useRef, useEffect, createElement: h } = React;
 
 const ROMAN = ['I','II','III','IV','V','VI'];
@@ -115,79 +124,90 @@ const GB = [[1,0],[2,5],[3,4]];
 const TA  = ['#1D9E75','#993C1D'];
 const TAS = ['#1D9E75','#D85A30'];
 
-const isSetter = n => n.toLowerCase().includes('(s)');
-const pidx = (g,t,pi) => (pi + g.rotation[t]) % 6;
+const isDark = () => window.matchMedia('(prefers-color-scheme:dark)').matches;
+const isSetter   = n => n.toLowerCase().includes('(s)');
+const pidx       = (g,t,pi) => (pi + g.rotation[t]) % 6;
 const setterRoman = (g,t) => {
   const i = g.players[t].findIndex(isSetter);
-  if (i < 0) return null;
-  return ROMAN[(i - g.rotation[t] + 6) % 6];
+  return i < 0 ? null : ROMAN[(i - g.rotation[t] + 6) % 6];
 };
 
 // ── Chip ──────────────────────────────────────────────────────────────────────
-function Chip({ name, roman, server, setter, accent, onTap }) {
-  const cls = ['chip', server ? 'srv' : setter ? 'set' : ''].filter(Boolean).join(' ');
-  const base = !server && !setter;
+function Chip({ name, roman, server, setter, accent, onTap, fontSize }) {
+  const cls = ['chip', server?'srv':setter?'set':''].filter(Boolean).join(' ');
+  const plain = !server && !setter;
   return h('div', {
     className: cls, onClick: onTap,
     style: {
-      flex: 1, minWidth: 0,
-      background: base ? (window.matchMedia('(prefers-color-scheme:dark)').matches ? '#2a2a2a' : '#f4f4f4') : undefined,
-      border: base ? `1.5px solid ${accent}` : undefined,
-      borderRadius: 8, padding: '6px 2px', textAlign: 'center',
-      minHeight: 60, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+      flex: 1, minWidth: 0, height: '100%',
+      background: plain ? (isDark() ? '#2a2a2a' : '#f4f4f4') : undefined,
+      border:     plain ? `1.5px solid ${accent}` : undefined,
+      borderRadius: 8, padding: '3px 2px', textAlign: 'center',
+      display: 'flex', flexDirection: 'column',
+      justifyContent: 'center', alignItems: 'center',
+      overflow: 'hidden',
     }
   },
-    h('div', { className: 'lbl', style: { fontSize: 10, color: '#888', marginBottom: 2 } },
+    h('div', { className: 'lbl', style: { fontSize: 10, color: '#888', marginBottom: 1, lineHeight: 1 } },
       roman + (server ? ' ★' : setter ? ' S' : '')),
     h('div', { className: 'nm', style: {
-      fontSize: 12, fontWeight: (server || setter) ? 500 : 400,
-      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0 2px',
+      fontSize: fontSize || 13, fontWeight: (server||setter) ? 500 : 400,
+      lineHeight: 1.2,
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      width: '100%', textAlign: 'center', padding: '0 3px',
     }}, name)
   );
 }
 
 // ── Court ─────────────────────────────────────────────────────────────────────
 function Court({ g, names, onRotate, onTapChip }) {
-  const sr = [setterRoman(g,0), setterRoman(g,1)];
-  const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
-  const cardBg = dark ? '#2a2a2a' : '#fff';
-  const cardBorder = dark ? '#444' : '#e0e0e0';
-  const netColor = dark ? '#555' : '#ccc';
+  const sr  = [setterRoman(g,0), setterRoman(g,1)];
+  const net = isDark() ? '#555' : '#ccc';
+  const bg  = isDark() ? '#252525' : '#fff';
+  const bdr = isDark() ? '#444'    : '#ddd';
 
-  return h('div', { style: { background: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 12, padding: 8 } },
-    // Single header row
-    h('div', { style: { display: 'flex', alignItems: 'center', gap: 4, marginBottom: 7 } },
-      h('div', { style: { flex: 1, display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden' } },
-        h('div', { style: { width: 7, height: 7, borderRadius: '50%', background: TA[0], flexShrink: 0 } }),
-        h('span', { style: { fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, names[0]),
-        g.serving === 0 && h('span', { className: 'srv-badge' }, 'serving'),
-        sr[0] && h('span', { className: 'set-badge' }, 'S:' + sr[0]),
-        h('button', { style: { padding: '4px 8px', fontSize: 11, borderRadius: 6, flexShrink: 0 }, onClick: () => onRotate(0) }, '↻')
+  return h('div', {
+    style: {
+      flex: 1, minHeight: 0,
+      background: bg, border: `1px solid ${bdr}`, borderRadius: 10,
+      padding: '5px 6px', display: 'flex', flexDirection: 'column', gap: 3,
+    }
+  },
+    // Header row
+    h('div', { style: { display:'flex', alignItems:'center', gap:4, flexShrink:0 } },
+      // Team A
+      h('div', { style: { flex:1, display:'flex', alignItems:'center', gap:3, minWidth:0, overflow:'hidden' } },
+        h('div', { style: { width:7, height:7, borderRadius:'50%', background:TA[0], flexShrink:0 } }),
+        h('span', { style: { fontSize:12, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, names[0]),
+        g.serving===0 && h('span', { className:'srv-badge' }, 'serving'),
+        sr[0] && h('span', { className:'set-badge' }, 'S:'+sr[0]),
+        h('button', { style:{padding:'3px 8px',fontSize:11,borderRadius:6,flexShrink:0}, onClick:()=>onRotate(0) }, '↻')
       ),
-      h('div', { style: { width: 14, flexShrink: 0 } }),
-      h('div', { style: { flex: 1, display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end', minWidth: 0, overflow: 'hidden' } },
-        h('button', { style: { padding: '4px 8px', fontSize: 11, borderRadius: 6, flexShrink: 0 }, onClick: () => onRotate(1) }, '↻'),
-        sr[1] && h('span', { className: 'set-badge' }, 'S:' + sr[1]),
-        g.serving === 1 && h('span', { className: 'srv-badge' }, 'serving'),
-        h('span', { style: { fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, names[1]),
-        h('div', { style: { width: 7, height: 7, borderRadius: '50%', background: TA[1], flexShrink: 0 } })
+      h('div', { style:{ width:22, flexShrink:0 } }),
+      // Team B
+      h('div', { style:{ flex:1, display:'flex', alignItems:'center', gap:3, justifyContent:'flex-end', minWidth:0, overflow:'hidden' } },
+        h('button', { style:{padding:'3px 8px',fontSize:11,borderRadius:6,flexShrink:0}, onClick:()=>onRotate(1) }, '↻'),
+        sr[1] && h('span', { className:'set-badge' }, 'S:'+sr[1]),
+        g.serving===1 && h('span', { className:'srv-badge' }, 'serving'),
+        h('span', { style:{ fontSize:12, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, names[1]),
+        h('div', { style:{ width:7, height:7, borderRadius:'50%', background:TA[1], flexShrink:0 } })
       )
     ),
     // Court rows
     ...[0,1,2].map(row =>
-      h('div', { key: row, style: { display: 'flex', gap: 3, marginBottom: row < 2 ? 4 : 0, alignItems: 'stretch' } },
+      h('div', { key:row, style:{ flex:1, minHeight:0, display:'flex', gap:3 } },
         ...[0,1].map(col => {
-          const pi = GA[row][col], idx = pidx(g,0,pi), pl = g.players[0][idx];
-          const server = pi === 0 && g.serving === 0;
-          return h(Chip, { key: col, name: pl, roman: ROMAN[idx], server, setter: isSetter(pl) && !server, accent: TA[0], onTap: () => onTapChip(0, idx) });
+          const pi=GA[row][col], idx=pidx(g,0,pi), pl=g.players[0][idx];
+          const server = pi===0 && g.serving===0;
+          return h(Chip, { key:col, name:pl, roman:ROMAN[idx], server, setter:isSetter(pl)&&!server, accent:TA[0], onTap:()=>onTapChip(0,idx) });
         }),
-        h('div', { style: { width: 14, flexShrink: 0, display: 'flex', alignItems: 'stretch', justifyContent: 'center', padding: '2px 0' } },
-          h('div', { style: { width: 3, background: netColor, borderRadius: 2 } })
+        h('div', { style:{ width:22, flexShrink:0, display:'flex', alignItems:'stretch', justifyContent:'center', padding:'2px 0' } },
+          h('div', { style:{ width:3, background:net, borderRadius:2 } })
         ),
         ...[0,1].map(col => {
-          const pi = GB[row][col], idx = pidx(g,1,pi), pl = g.players[1][idx];
-          const server = pi === 0 && g.serving === 1;
-          return h(Chip, { key: col, name: pl, roman: ROMAN[idx], server, setter: isSetter(pl) && !server, accent: TA[1], onTap: () => onTapChip(1, idx) });
+          const pi=GB[row][col], idx=pidx(g,1,pi), pl=g.players[1][idx];
+          const server = pi===0 && g.serving===1;
+          return h(Chip, { key:col, name:pl, roman:ROMAN[idx], server, setter:isSetter(pl)&&!server, accent:TA[1], onTap:()=>onTapChip(1,idx) });
         })
       )
     )
@@ -198,74 +218,77 @@ function Court({ g, names, onRotate, onTapChip }) {
 function EditPanel({ edit, teamName, onSave, onCancel }) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current) ref.current.focus(); }, []);
-  const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
-  return h('div', { style: { background: dark ? '#2a2a2a' : '#fff', border: `1.5px solid ${dark?'#555':'#ccc'}`, borderRadius: 12, padding: 12, marginTop: 10 } },
-    h('div', { style: { fontSize: 12, color: '#888', marginBottom: 8 } }, `Edit ${teamName} — player ${ROMAN[edit.idx]}`),
-    h('input', {
-      ref, value: edit.value,
-      onChange: e => edit.onChange(e.target.value),
-      onKeyDown: e => { if (e.key === 'Enter') onSave(); if (e.key === 'Escape') onCancel(); },
-      style: { marginBottom: 10 }, placeholder: 'Player name',
-    }),
-    h('div', { style: { display: 'flex', gap: 8 } },
-      h('button', { onClick: onSave, style: { flex: 1, padding: '10px 0', background: '#1D9E75', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500 } }, 'Save'),
-      h('button', { onClick: onCancel, style: { padding: '10px 14px', fontSize: 14 } }, 'Cancel')
+  const bg  = isDark() ? '#2a2a2a' : '#fff';
+  const bdr = isDark() ? '#555'    : '#ccc';
+  return h('div', {
+    style: { flexShrink:0, background:bg, border:`1.5px solid ${bdr}`, borderRadius:10, padding:'8px 10px' }
+  },
+    h('div', { style:{ fontSize:11, color:'#888', marginBottom:6 } },
+      `Sub in — ${teamName}, player ${ROMAN[edit.idx]}`),
+    h('div', { style:{ display:'flex', gap:8 } },
+      h('input', {
+        ref, value:edit.value,
+        onChange: e => edit.onChange(e.target.value),
+        onKeyDown: e => { if(e.key==='Enter') onSave(); if(e.key==='Escape') onCancel(); },
+        style:{ flex:1, fontSize:15 }, placeholder:'New player name',
+      }),
+      h('button', { onClick:onSave,   style:{ padding:'0 16px', background:'#1D9E75', color:'#fff', border:'none', fontWeight:500 } }, 'Save'),
+      h('button', { onClick:onCancel, style:{ padding:'0 12px' } }, '✕')
     )
   );
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
-  const [phase, setPhase]     = useState('setup');
-  const [names, setNames]     = useState(['Team A', 'Team B']);
-  const [inputs, setInputs]   = useState([Array(6).fill(''), Array(6).fill('')]);
+  const [phase,    setPhase]    = useState('setup');
+  const [names,    setNames]    = useState(['Team A','Team B']);
+  const [inputs,   setInputs]   = useState([Array(6).fill(''), Array(6).fill('')]);
   const [firstSrv, setFirstSrv] = useState(0);
-  const [hist, setHist]       = useState([]);
-  const [g, setG]             = useState(null);
-  const [edit, setEdit]       = useState(null);
+  const [hist,     setHist]     = useState([]);
+  const [g,        setG]        = useState(null);
+  const [edit,     setEdit]     = useState(null);
 
-  // Wake lock
+  // Orientation + wake lock
   useEffect(() => {
     window.__vbGameActive = (phase === 'game');
-    if (phase === 'game') acquireWakeLock();
-    else releaseWakeLock();
-    return () => {};
+    if (phase === 'game') {
+      lockOrientation('landscape');
+      acquireWakeLock();
+    } else {
+      lockOrientation('portrait');
+      releaseWakeLock();
+    }
   }, [phase]);
 
   function start() {
-    const players = inputs.map(t => t.map((n,i) => n.trim() || 'Player ' + (i+1)));
-    setG({ players, rotation: [0,0], points: [0,0], serving: firstSrv });
+    const players = inputs.map(t => t.map((n,i) => n.trim() || 'Player '+(i+1)));
+    setG({ players, rotation:[0,0], points:[0,0], serving:firstSrv });
     setHist([]); setEdit(null); setPhase('game');
   }
-
   function switchSides() {
-    setNames(n => [n[1], n[0]]);
-    setInputs(i => [i[1], i[0]]);
-    setFirstSrv(s => 1 - s);
+    setNames(n => [n[1],n[0]]);
+    setInputs(i => [i[1],i[0]]);
+    setFirstSrv(s => 1-s);
   }
-
   function score(t) {
     setEdit(null);
     setHist(h => [...h, g]);
     setG(prev => {
       const pts = [...prev.points]; pts[t]++;
       let rot = [...prev.rotation], srv = prev.serving;
-      if (t !== prev.serving) { srv = t; rot = [...prev.rotation]; rot[t] = (prev.rotation[t] + 1) % 6; }
-      return { ...prev, points: pts, rotation: rot, serving: srv };
+      if (t !== prev.serving) { srv=t; rot=[...prev.rotation]; rot[t]=(prev.rotation[t]+1)%6; }
+      return { ...prev, points:pts, rotation:rot, serving:srv };
     });
   }
-
   function rotateTeam(t) {
     setEdit(null);
     setHist(h => [...h, g]);
-    setG(prev => { const rot = [...prev.rotation]; rot[t] = (rot[t] + 1) % 6; return { ...prev, rotation: rot }; });
+    setG(prev => { const rot=[...prev.rotation]; rot[t]=(rot[t]+1)%6; return {...prev,rotation:rot}; });
   }
-
   function tapChip(t, idx) {
-    if (edit && edit.t === t && edit.idx === idx) { setEdit(null); return; }
+    if (edit && edit.t===t && edit.idx===idx) { setEdit(null); return; }
     setEdit({ t, idx, value: g.players[t][idx] });
   }
-
   function saveEdit() {
     if (!edit) return;
     const val = edit.value.trim() || g.players[edit.t][edit.idx];
@@ -277,89 +300,83 @@ function App() {
     });
     setEdit(null);
   }
-
   function undo() {
     if (!hist.length) return;
     setEdit(null);
-    setG(hist[hist.length - 1]);
-    setHist(h => h.slice(0, -1));
+    setG(hist[hist.length-1]);
+    setHist(h => h.slice(0,-1));
   }
 
-  const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const dark   = isDark();
   const surfBg = dark ? '#252525' : '#f4f4f4';
 
-  // ── Setup screen ─────────────────────────────────────────────────────────
-  if (phase === 'setup') return h('div', { style: { paddingTop: 8 } },
-    h('h2', { style: { fontSize: 19, fontWeight: 500, marginBottom: 16 } }, 'Volleyball Rotation Tracker'),
-    h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 } },
-      ...[0,1].map(t => h('div', { key: t, style: { border: `2px solid ${TA[t]}`, borderRadius: 10, padding: '11px 12px' } },
-        h('input', {
-          value: names[t],
-          onChange: e => setNames(n => n.map((v,i) => i===t ? e.target.value : v)),
-          style: { marginBottom: 8, fontWeight: 500, fontSize: 14 },
-          placeholder: `Team ${t ? 'B' : 'A'} name`
-        }),
+  // ── Setup (portrait) ───────────────────────────────────────────────────────
+  if (phase === 'setup') return h('div', { id:'setup' },
+    h('h2', { style:{ fontSize:19, fontWeight:500, marginBottom:16 } }, 'Volleyball Rotation Tracker'),
+    h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 } },
+      ...[0,1].map(t => h('div', { key:t, style:{ border:`2px solid ${TA[t]}`, borderRadius:10, padding:'11px 12px' } },
+        h('input', { value:names[t], onChange:e=>setNames(n=>n.map((v,i)=>i===t?e.target.value:v)),
+          style:{ marginBottom:8, fontWeight:500, fontSize:14 }, placeholder:`Team ${t?'B':'A'} name` }),
         ...Array(6).fill(0).map((_,pi) => h('input', {
-          key: pi, value: inputs[t][pi],
-          onChange: e => setInputs(p => { const nx = p.map(a => [...a]); nx[t][pi] = e.target.value; return nx; }),
-          placeholder: `${ROMAN[pi]} — player name`,
-          style: { marginBottom: pi < 5 ? 5 : 0, fontSize: 12 }
+          key:pi, value:inputs[t][pi],
+          onChange:e=>setInputs(p=>{ const nx=p.map(a=>[...a]); nx[t][pi]=e.target.value; return nx; }),
+          placeholder:`${ROMAN[pi]} — player name`, style:{ marginBottom:pi<5?5:0, fontSize:12 }
         }))
       ))
     ),
-    h('button', {
-      onClick: switchSides,
-      style: { width: '100%', padding: '11px 0', borderRadius: 10, fontSize: 14, marginBottom: 12 }
-    }, '⇄  Switch sides (' + names[1] + ' ← → ' + names[0] + ')'),
-    h('div', { style: { background: surfBg, borderRadius: 8, padding: '7px 10px', marginBottom: 12, fontSize: 12, color: '#888' } },
-      'Add ', h('code', null, '(S)'), ' to setter name — e.g. "Alex (S)"'
-    ),
-    h('div', { style: { marginBottom: 14 } },
-      h('div', { style: { fontSize: 13, color: '#888', marginBottom: 7 } }, 'First serve'),
-      h('div', { style: { display: 'flex', gap: 8 } },
-        ...[0,1].map(t => h('button', {
-          key: t, onClick: () => setFirstSrv(t),
-          style: {
-            flex: 1, padding: '10px 0', fontSize: 14,
-            background: firstSrv === t ? (t===0 ? '#E1F5EE' : '#FAECE7') : 'transparent',
-            border: `1.5px solid ${firstSrv === t ? TA[t] : '#ccc'}`,
-            color: firstSrv === t ? (t===0 ? '#085041' : '#4A1B0C') : 'inherit',
-            fontWeight: firstSrv === t ? 500 : 400,
-          }
-        }, names[t]))
+    h('button', { onClick:switchSides, style:{ width:'100%', padding:'11px 0', borderRadius:10, fontSize:14, marginBottom:12 } },
+      '⇄  Switch sides (' + names[1] + ' ← → ' + names[0] + ')'),
+    h('div', { style:{ background:surfBg, borderRadius:8, padding:'7px 10px', marginBottom:12, fontSize:12, color:'#888' } },
+      'Add ', h('code',null,'(S)'), ' to setter name — e.g. "Alex (S)"'),
+    h('div', { style:{ marginBottom:14 } },
+      h('div', { style:{ fontSize:13, color:'#888', marginBottom:7 } }, 'First serve'),
+      h('div', { style:{ display:'flex', gap:8 } },
+        ...[0,1].map(t => h('button', { key:t, onClick:()=>setFirstSrv(t), style:{
+          flex:1, padding:'10px 0', fontSize:14,
+          background: firstSrv===t ? (t===0?'#E1F5EE':'#FAECE7') : 'transparent',
+          border: `1.5px solid ${firstSrv===t ? TA[t] : '#ccc'}`,
+          color:   firstSrv===t ? (t===0?'#085041':'#4A1B0C') : 'inherit',
+          fontWeight: firstSrv===t ? 500 : 400,
+        } }, names[t]))
       )
     ),
-    h('button', {
-      onClick: start,
-      style: { width: '100%', padding: '14px 0', background: '#1D9E75', color: '#fff', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 600 }
-    }, 'Start')
+    h('button', { onClick:start, style:{
+      width:'100%', padding:'14px 0', background:'#1D9E75', color:'#fff',
+      border:'none', borderRadius:10, fontSize:16, fontWeight:600,
+    } }, 'Start')
   );
 
-  // ── Game screen ───────────────────────────────────────────────────────────
-  return h('div', { style: { paddingTop: 8 } },
+  // ── Game (landscape, fixed full-screen) ────────────────────────────────────
+  return h('div', { id:'game' },
     // Score bar
-    h('div', { style: { display: 'flex', alignItems: 'center', background: surfBg, borderRadius: 10, padding: '9px 14px', marginBottom: 12 } },
-      h('div', { style: { flex: 1 } },
-        h('div', { style: { fontSize: 11, color: '#888' } }, names[0]),
-        h('div', { style: { fontSize: 34, fontWeight: 500, color: TAS[0], lineHeight: 1.1 } }, g.points[0])
+    h('div', { style:{
+      flexShrink:0, display:'flex', alignItems:'center',
+      background:surfBg, borderRadius:8, padding:'5px 12px',
+    } },
+      h('div', { style:{ flex:1 } },
+        h('div', { style:{ fontSize:11, color:'#888', lineHeight:1 } }, names[0]),
+        h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[0], lineHeight:1.1 } }, g.points[0])
       ),
-      h('div', { style: { flex: 1, textAlign: 'right' } },
-        h('div', { style: { fontSize: 11, color: '#888' } }, names[1]),
-        h('div', { style: { fontSize: 34, fontWeight: 500, color: TAS[1], lineHeight: 1.1 } }, g.points[1])
+      h('div', { style:{ flex:1, textAlign:'right' } },
+        h('div', { style:{ fontSize:11, color:'#888', lineHeight:1 } }, names[1]),
+        h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[1], lineHeight:1.1 } }, g.points[1])
       )
     ),
-    h(Court, { g, names, onRotate: rotateTeam, onTapChip: tapChip }),
-    edit && h(EditPanel, { edit, teamName: names[edit.t], onSave: saveEdit, onCancel: () => setEdit(null) }),
+    // Court
+    h(Court, { g, names, onRotate:rotateTeam, onTapChip:tapChip }),
+    // Edit panel (inline, compresses court when open)
+    edit && h(EditPanel, { edit, teamName:names[edit.t], onSave:saveEdit, onCancel:()=>setEdit(null) }),
     // +1 buttons
-    h('div', { style: { display: 'flex', gap: 8, margin: '10px 0 8px' } },
-      ...[0,1].map(t => h('button', {
-        key: t, onClick: () => score(t),
-        style: { flex: 1, padding: '16px 0', background: TAS[t], color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600 }
-      }, '+1 ' + names[t]))
+    h('div', { style:{ flexShrink:0, display:'flex', gap:8 } },
+      ...[0,1].map(t => h('button', { key:t, onClick:()=>score(t), style:{
+        flex:1, padding:'10px 0', background:TAS[t], color:'#fff',
+        border:'none', borderRadius:8, fontSize:15, fontWeight:600,
+      } }, '+1 ' + names[t]))
     ),
-    h('div', { style: { display: 'flex', gap: 8 } },
-      h('button', { onClick: undo, disabled: !hist.length, style: { flex: 1, padding: '10px 0', opacity: hist.length ? 1 : 0.4 } }, '↩ Undo'),
-      h('button', { onClick: () => { setPhase('setup'); setG(null); setHist([]); setEdit(null); }, style: { flex: 1, padding: '10px 0' } }, 'New game')
+    // Secondary buttons
+    h('div', { style:{ flexShrink:0, display:'flex', gap:8 } },
+      h('button', { onClick:undo, disabled:!hist.length, style:{ flex:1, padding:'7px 0', opacity:hist.length?1:0.4, fontSize:13 } }, '↩ Undo'),
+      h('button', { onClick:()=>{ setPhase('setup'); setG(null); setHist([]); setEdit(null); }, style:{ flex:1, padding:'7px 0', fontSize:13 } }, 'New game')
     )
   );
 }
