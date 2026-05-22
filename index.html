@@ -341,8 +341,8 @@ function App() {
       } }, '+1 ' + names[t]))
     ),
     h('div', { style:{ flexShrink:0, display:'flex', gap:8 } },
-      h('button', { onClick:undo, disabled:!hist.length, style:{ flex:1, padding:'7px 0', opacity:hist.length?1:0.4, fontSize:13 } }, '↩ Undo'),
-      h('button', { onClick:()=>{ setPhase('setup'); setG(null); setHist([]); setEdit(null); }, style:{ flex:1, padding:'7px 0', fontSize:13 } }, 'New game')
+      h('button', { onClick:()=>{ if(window.confirm('Undo last action?')) undo(); }, disabled:!hist.length, style:{ flex:1, padding:'7px 0', opacity:hist.length?1:0.4, fontSize:13 } }, '↩ Undo'),
+      h('button', { onClick:()=>{ if(window.confirm('End current game and start a new one?')){ setPhase('setup'); setG(null); setHist([]); setEdit(null); } }, style:{ flex:1, padding:'7px 0', fontSize:13 } }, 'New game')
     )
   );
 }
