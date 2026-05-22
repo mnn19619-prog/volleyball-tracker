@@ -323,16 +323,17 @@ function App() {
         h('div', { style:{ fontSize:11, color:'#888', lineHeight:1 } }, names[0]),
         h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[0], lineHeight:1.1 } }, g.points[0])
       ),
-      // Manual rotate button — always visible, tap to toggle
       h('button', {
         onClick: () => setRotated(r => !r),
         title: 'Toggle screen rotation',
         style: {
-          flexShrink:0, padding:'4px 10px', fontSize:18, lineHeight:1,
-          border:'none', background: rotated ? '#1D9E75' : surfBg,
-          color: rotated ? '#fff' : '#888', borderRadius:8,
+          flexShrink:0, padding:'4px 12px', fontSize:13, fontWeight:500, lineHeight:1,
+          border: `1.5px solid ${rotated ? '#1D9E75' : '#aaa'}`,
+          background: rotated ? '#1D9E75' : 'transparent',
+          color: rotated ? '#fff' : '#555', borderRadius:8,
+          whiteSpace:'nowrap',
         }
-      }, '⟳'),
+      }, rotated ? '↻ on' : '↻ off'),
       h('div', { style:{ flex:1, textAlign:'right' } },
         h('div', { style:{ fontSize:11, color:'#888', lineHeight:1 } }, names[1]),
         h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[1], lineHeight:1.1 } }, g.points[1])
