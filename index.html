@@ -13,72 +13,71 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; overflow: hidden; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #fff; color: #000; }
-    @media (prefers-color-scheme: dark) { body { background: #1a1a1a; color: #f0f0f0; } }
 
-    /* Setup — normal portrait scroll */
-    #setup {
-      height: 100%; overflow-y: auto;
-      padding: 14px; max-width: 480px; margin: 0 auto;
+    /* light mode (default) */
+    :root {
+      --bg-body:  #ffffff;
+      --bg-surf:  #f4f4f4;
+      --bg-card:  #ffffff;
+      --bg-chip:  #f0f0f0;
+      --bg-inp:   #ffffff;
+      --text:     #000000;
+      --text-sub: #555555;
+      --text-mut: #888888;
+      --bdr:      #cccccc;
+      --bdr-card: #dddddd;
+      --net:      #cccccc;
     }
+    /* dark mode — toggled via data-dark on <html> */
+    html[data-dark] {
+      --bg-body:  #1a1a1a;
+      --bg-surf:  #252525;
+      --bg-card:  #252525;
+      --bg-chip:  #2a2a2a;
+      --bg-inp:   #2a2a2a;
+      --text:     #f0f0f0;
+      --text-sub: #bbbbbb;
+      --text-mut: #999999;
+      --bdr:      #444444;
+      --bdr-card: #444444;
+      --net:      #555555;
+    }
+    body  { font-family: system-ui,-apple-system,sans-serif; background: var(--bg-body); color: var(--text); }
+    input { display:block; width:100%; padding:8px 10px; font-size:14px; font-family:inherit;
+            border:1px solid var(--bdr); border-radius:7px; background:var(--bg-inp); color:var(--text); outline:none; }
+    input:focus { border-color:#1D9E75; box-shadow:0 0 0 3px rgba(29,158,117,.15); }
+    button { font-family:inherit; font-size:14px; border-radius:8px; border:1px solid var(--bdr);
+             background:transparent; color:var(--text); cursor:pointer; transition:opacity .1s; }
+    button:active { opacity:.7; }
 
-    /* Game — fills screen, flex column */
+    #setup { height:100%; overflow-y:auto; padding:14px; max-width:480px; margin:0 auto; }
+
     #game {
-      position: fixed;
-      display: flex; flex-direction: column; gap: 5px; overflow: hidden;
-      /* default: true landscape (screen rotated or DVW > DVH) */
-      top: 0; left: 0; right: 0; bottom: 0;
+      position:fixed; display:flex; flex-direction:column; gap:5px; overflow:hidden;
+      top:0; left:0; right:0; bottom:0;
       padding: max(env(safe-area-inset-top),6px) max(env(safe-area-inset-right),8px)
                max(env(safe-area-inset-bottom),6px) max(env(safe-area-inset-left),8px);
     }
-
-    /* CSS-forced landscape when screen stays portrait */
     #game.rotated {
-      top:    50%;
-      left:   50%;
-      right:  unset;
-      bottom: unset;
-      width:  100dvh;
-      height: 100dvw;
-      padding: 6px 8px;
-      transform: translate(-50%, -50%) rotate(90deg);
+      top:50%; left:50%; right:unset; bottom:unset;
+      width:100dvh; height:100dvw; padding:6px 8px;
+      transform:translate(-50%,-50%) rotate(90deg);
     }
 
-    input {
-      display: block; width: 100%; padding: 8px 10px; font-size: 14px; font-family: inherit;
-      border: 1px solid #ccc; border-radius: 7px; background: #fff; color: #000; outline: none;
-    }
-    input:focus { border-color: #1D9E75; box-shadow: 0 0 0 3px rgba(29,158,117,.15); }
-    button {
-      font-family: inherit; font-size: 14px; border-radius: 8px;
-      border: 1px solid #ccc; background: transparent; color: inherit;
-      cursor: pointer; transition: opacity .1s;
-    }
-    button:active { opacity: .7; }
-    @media (prefers-color-scheme: dark) {
-      input  { background: #2a2a2a; color: #f0f0f0; border-color: #444; }
-      input:focus { border-color: #5DCAA5; }
-      button { border-color: #444; }
-    }
-    .chip { cursor: pointer; }
-    .srv { background: #FAEEDA !important; border: 1.5px solid #BA7517 !important; }
-    .srv .lbl { color: #854F0B; } .srv .nm { color: #633806; font-weight: 600; }
-    .set { background: #EEEDFE !important; border: 1.5px solid #7F77DD !important; }
-    .set .lbl { color: #534AB7; } .set .nm { color: #3C3489; font-weight: 500; }
-    .srv-badge, .set-badge {
-      border-radius: 4px; font-size: 10px; padding: 1px 5px;
-      white-space: nowrap; display: inline-block; flex-shrink: 0;
-    }
-    .srv-badge { background: #FAEEDA; color: #854F0B; border: 1px solid #BA7517; }
-    .set-badge { background: #EEEDFE; color: #534AB7; border: 1px solid #7F77DD; }
-    @media (prefers-color-scheme: dark) {
-      .srv { background: #412402 !important; }
-      .srv .lbl { color: #EF9F27; } .srv .nm { color: #FAC775; }
-      .set { background: #26215C !important; border-color: #AFA9EC !important; }
-      .set .lbl { color: #AFA9EC; } .set .nm { color: #CECBF6; }
-      .srv-badge { background: #412402; color: #FAC775; border-color: #EF9F27; }
-      .set-badge { background: #26215C; color: #CECBF6; border-color: #AFA9EC; }
-    }
+    .chip { cursor:pointer; }
+    .srv { background:#FAEEDA!important; border:1.5px solid #BA7517!important; }
+    .srv .lbl { color:#854F0B; } .srv .nm { color:#633806; font-weight:600; }
+    .set { background:#EEEDFE!important; border:1.5px solid #7F77DD!important; }
+    .set .lbl { color:#534AB7; } .set .nm { color:#3C3489; font-weight:500; }
+    .srv-badge,.set-badge { border-radius:4px; font-size:10px; padding:1px 5px; white-space:nowrap; display:inline-block; flex-shrink:0; }
+    .srv-badge { background:#FAEEDA; color:#854F0B; border:1px solid #BA7517; }
+    .set-badge { background:#EEEDFE; color:#534AB7; border:1px solid #7F77DD; }
+    html[data-dark] .srv { background:#412402!important; }
+    html[data-dark] .srv .lbl { color:#EF9F27; } html[data-dark] .srv .nm { color:#FAC775; }
+    html[data-dark] .set { background:#26215C!important; border-color:#AFA9EC!important; }
+    html[data-dark] .set .lbl { color:#AFA9EC; } html[data-dark] .set .nm { color:#CECBF6; }
+    html[data-dark] .srv-badge { background:#412402; color:#FAC775; border-color:#EF9F27; }
+    html[data-dark] .set-badge { background:#26215C; color:#CECBF6; border-color:#AFA9EC; }
   </style>
 </head>
 <body>
@@ -106,8 +105,6 @@ const GA = [[4,3],[5,2],[0,1]];
 const GB = [[1,0],[2,5],[3,4]];
 const TA  = ['#1D9E75','#993C1D'];
 const TAS = ['#1D9E75','#D85A30'];
-
-const isDark      = () => window.matchMedia('(prefers-color-scheme:dark)').matches;
 const isSetter    = n  => n.toLowerCase().includes('(s)');
 const pidx        = (g,t,pi) => (pi + g.rotation[t]) % 6;
 const setterRoman = (g,t) => {
@@ -121,18 +118,18 @@ function Chip({ name, roman, server, setter, accent, onTap }) {
   return h('div', {
     className: cls, onClick: onTap,
     style: {
-      flex: 1, minWidth: 0, height: '100%',
-      background: plain ? (isDark() ? '#2a2a2a' : '#f4f4f4') : undefined,
+      flex:1, minWidth:0, height:'100%',
+      background: plain ? 'var(--bg-chip)' : undefined,
       border:     plain ? `1.5px solid ${accent}` : undefined,
-      borderRadius: 8, padding: '3px 2px', textAlign: 'center',
-      display: 'flex', flexDirection: 'column',
-      justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+      borderRadius:8, padding:'3px 2px', textAlign:'center',
+      display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', overflow:'hidden',
     }
   },
-    h('div', { className:'lbl', style:{ fontSize:10, color:'#888', marginBottom:1, lineHeight:1 } },
+    h('div', { className:'lbl', style:{ fontSize:10, color:'var(--text-mut)', marginBottom:2, lineHeight:1 } },
       roman + (server?' ★':setter?' S':'')),
     h('div', { className:'nm', style:{
-      fontSize:13, fontWeight:(server||setter)?500:400, lineHeight:1.2,
+      fontSize:16, fontWeight:(server||setter)?500:400, lineHeight:1.2,
+      color:'var(--text)',
       whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
       width:'100%', textAlign:'center', padding:'0 3px',
     }}, name)
@@ -140,13 +137,11 @@ function Chip({ name, roman, server, setter, accent, onTap }) {
 }
 
 function Court({ g, names, onRotate, onTapChip }) {
-  const sr  = [setterRoman(g,0), setterRoman(g,1)];
-  const net = isDark() ? '#555' : '#ccc';
-  const bg  = isDark() ? '#252525' : '#fff';
-  const bdr = isDark() ? '#444'    : '#ddd';
+  const sr = [setterRoman(g,0), setterRoman(g,1)];
   return h('div', {
     style: {
-      flex:1, minHeight:0, background:bg, border:`1px solid ${bdr}`,
+      flex:1, minHeight:0,
+      background:'var(--bg-card)', border:'1px solid var(--bdr-card)',
       borderRadius:10, padding:'5px 6px',
       display:'flex', flexDirection:'column', gap:3,
     }
@@ -154,7 +149,7 @@ function Court({ g, names, onRotate, onTapChip }) {
     h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexShrink:0 } },
       h('div', { style:{ flex:1, display:'flex', alignItems:'center', gap:3, minWidth:0, overflow:'hidden' } },
         h('div', { style:{ width:7, height:7, borderRadius:'50%', background:TA[0], flexShrink:0 } }),
-        h('span', { style:{ fontSize:12, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, names[0]),
+        h('span', { style:{ fontSize:12, fontWeight:500, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, names[0]),
         g.serving===0 && h('span', { className:'srv-badge' }, 'serving'),
         sr[0] && h('span', { className:'set-badge' }, 'S:'+sr[0]),
         h('button', { style:{ padding:'3px 8px', fontSize:11, borderRadius:6, flexShrink:0 }, onClick:()=>onRotate(0) }, '↻')
@@ -164,7 +159,7 @@ function Court({ g, names, onRotate, onTapChip }) {
         h('button', { style:{ padding:'3px 8px', fontSize:11, borderRadius:6, flexShrink:0 }, onClick:()=>onRotate(1) }, '↻'),
         sr[1] && h('span', { className:'set-badge' }, 'S:'+sr[1]),
         g.serving===1 && h('span', { className:'srv-badge' }, 'serving'),
-        h('span', { style:{ fontSize:12, fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, names[1]),
+        h('span', { style:{ fontSize:12, fontWeight:500, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, names[1]),
         h('div', { style:{ width:7, height:7, borderRadius:'50%', background:TA[1], flexShrink:0 } })
       )
     ),
@@ -176,7 +171,7 @@ function Court({ g, names, onRotate, onTapChip }) {
           return h(Chip, { key:col, name:pl, roman:ROMAN[idx], server, setter:isSetter(pl)&&!server, accent:TA[0], onTap:()=>onTapChip(0,idx) });
         }),
         h('div', { style:{ width:22, flexShrink:0, display:'flex', alignItems:'stretch', justifyContent:'center', padding:'2px 0' } },
-          h('div', { style:{ width:3, background:net, borderRadius:2 } })
+          h('div', { style:{ width:3, background:'var(--net)', borderRadius:2 } })
         ),
         ...[0,1].map(col => {
           const pi=GB[row][col], idx=pidx(g,1,pi), pl=g.players[1][idx];
@@ -191,10 +186,8 @@ function Court({ g, names, onRotate, onTapChip }) {
 function EditPanel({ edit, teamName, onSave, onCancel }) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current) ref.current.focus(); }, []);
-  const bg  = isDark() ? '#2a2a2a' : '#fff';
-  const bdr = isDark() ? '#555'    : '#ccc';
-  return h('div', { style:{ flexShrink:0, background:bg, border:`1.5px solid ${bdr}`, borderRadius:10, padding:'8px 10px' } },
-    h('div', { style:{ fontSize:11, color:'#888', marginBottom:6 } }, `Sub in — ${teamName}, player ${ROMAN[edit.idx]}`),
+  return h('div', { style:{ flexShrink:0, background:'var(--bg-card)', border:'1.5px solid var(--bdr)', borderRadius:10, padding:'8px 10px' } },
+    h('div', { style:{ fontSize:11, color:'var(--text-mut)', marginBottom:6 } }, `Sub in — ${teamName}, player ${ROMAN[edit.idx]}`),
     h('div', { style:{ display:'flex', gap:8 } },
       h('input', { ref, value:edit.value, onChange:e=>edit.onChange(e.target.value),
         onKeyDown:e=>{ if(e.key==='Enter') onSave(); if(e.key==='Escape') onCancel(); },
@@ -205,6 +198,20 @@ function EditPanel({ edit, teamName, onSave, onCancel }) {
   );
 }
 
+function DarkToggle({ dark, onToggle, style }) {
+  return h('button', {
+    onClick: onToggle,
+    style: {
+      padding:'4px 10px', fontSize:13, fontWeight:500, lineHeight:1,
+      border:`1.5px solid ${dark ? '#aaa' : '#aaa'}`,
+      background: 'transparent',
+      color: 'var(--text-sub)', borderRadius:8,
+      whiteSpace:'nowrap',
+      ...style,
+    }
+  }, dark ? '☀ Light' : '☾ Dark');
+}
+
 function App() {
   const [phase,    setPhase]    = useState('setup');
   const [names,    setNames]    = useState(['Team A','Team B']);
@@ -213,15 +220,23 @@ function App() {
   const [hist,     setHist]     = useState([]);
   const [g,        setG]        = useState(null);
   const [edit,     setEdit]     = useState(null);
-  // rotated = true  → CSS transform rotates content to landscape (for stuck-portrait PWA)
-  // rotated = false → normal layout (screen already landscape)
   const [rotated,  setRotated]  = useState(false);
+  const [dark,     setDark]     = useState(() => {
+    const saved = localStorage.getItem('vb-dark');
+    if (saved !== null) return saved === '1';
+    return window.matchMedia('(prefers-color-scheme:dark)').matches;
+  });
+
+  // Apply dark mode to html element
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-dark', dark);
+    localStorage.setItem('vb-dark', dark ? '1' : '0');
+  }, [dark]);
 
   useEffect(() => {
     window.__vbGameActive = (phase === 'game');
     if (phase === 'game') {
       acquireWakeLock();
-      // Auto-detect: if screen is portrait, pre-rotate
       setRotated(window.innerHeight > window.innerWidth);
     } else {
       releaseWakeLock();
@@ -229,13 +244,9 @@ function App() {
     }
   }, [phase]);
 
-  // Re-check orientation when screen size changes
   useEffect(() => {
     if (phase !== 'game') return;
-    const update = () => {
-      const nowPortrait = window.innerHeight > window.innerWidth;
-      setRotated(nowPortrait);
-    };
+    const update = () => setRotated(window.innerHeight > window.innerWidth);
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
     return () => { window.removeEventListener('resize', update); window.removeEventListener('orientationchange', update); };
@@ -275,13 +286,14 @@ function App() {
     if (!hist.length) return;
     setEdit(null); setG(hist[hist.length-1]); setHist(h=>h.slice(0,-1));
   }
+  const toggleDark = () => setDark(d => !d);
 
-  const dark   = isDark();
-  const surfBg = dark ? '#252525' : '#f4f4f4';
-
-  // ── Setup ────────────────────────────────────────────────────────────────
+  // ── Setup ──────────────────────────────────────────────────────────────────
   if (phase === 'setup') return h('div', { id:'setup' },
-    h('h2', { style:{ fontSize:19, fontWeight:500, marginBottom:16 } }, 'Volleyball Rotation Tracker'),
+    h('div', { style:{ display:'flex', alignItems:'center', marginBottom:16 } },
+      h('h2', { style:{ fontSize:19, fontWeight:500, flex:1, color:'var(--text)' } }, 'Volleyball Rotation Tracker'),
+      h(DarkToggle, { dark, onToggle:toggleDark })
+    ),
     h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 } },
       ...[0,1].map(t => h('div', { key:t, style:{ border:`2px solid ${TA[t]}`, borderRadius:10, padding:'11px 12px' } },
         h('input', { value:names[t], onChange:e=>setNames(n=>n.map((v,i)=>i===t?e.target.value:v)),
@@ -295,16 +307,16 @@ function App() {
     ),
     h('button', { onClick:switchSides, style:{ width:'100%', padding:'11px 0', borderRadius:10, fontSize:14, marginBottom:12 } },
       '⇄  Switch sides (' + names[1] + ' ← → ' + names[0] + ')'),
-    h('div', { style:{ background:surfBg, borderRadius:8, padding:'7px 10px', marginBottom:12, fontSize:12, color:'#888' } },
+    h('div', { style:{ background:'var(--bg-surf)', borderRadius:8, padding:'7px 10px', marginBottom:12, fontSize:12, color:'var(--text-mut)' } },
       'Add ', h('code',null,'(S)'), ' to setter name — e.g. "Alex (S)"'),
     h('div', { style:{ marginBottom:14 } },
-      h('div', { style:{ fontSize:13, color:'#888', marginBottom:7 } }, 'First serve'),
+      h('div', { style:{ fontSize:13, color:'var(--text-mut)', marginBottom:7 } }, 'First serve'),
       h('div', { style:{ display:'flex', gap:8 } },
         ...[0,1].map(t => h('button', { key:t, onClick:()=>setFirstSrv(t), style:{
           flex:1, padding:'10px 0', fontSize:14,
           background: firstSrv===t ? (t===0?'#E1F5EE':'#FAECE7') : 'transparent',
-          border: `1.5px solid ${firstSrv===t ? TA[t] : '#ccc'}`,
-          color:   firstSrv===t ? (t===0?'#085041':'#4A1B0C') : 'inherit',
+          border: `1.5px solid ${firstSrv===t ? TA[t] : 'var(--bdr)'}`,
+          color:   firstSrv===t ? (t===0?'#085041':'#4A1B0C') : 'var(--text)',
           fontWeight: firstSrv===t ? 500 : 400,
         } }, names[t]))
       )
@@ -315,36 +327,39 @@ function App() {
     } }, 'Start')
   );
 
-  // ── Game ─────────────────────────────────────────────────────────────────
+  // ── Game ───────────────────────────────────────────────────────────────────
   return h('div', { id:'game', className: rotated ? 'rotated' : '' },
-    // Score bar + manual rotate toggle
-    h('div', { style:{ flexShrink:0, display:'flex', alignItems:'center', background:surfBg, borderRadius:8, padding:'5px 10px', gap:8 } },
+    // Score bar
+    h('div', { style:{ flexShrink:0, display:'flex', alignItems:'center', background:'var(--bg-surf)', borderRadius:8, padding:'5px 8px', gap:6 } },
       h('div', { style:{ flex:1 } },
-        h('div', { style:{ fontSize:11, color:'#888', lineHeight:1 } }, names[0]),
+        h('div', { style:{ fontSize:11, color:'var(--text-mut)', lineHeight:1 } }, names[0]),
         h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[0], lineHeight:1.1 } }, g.points[0])
       ),
-      h('button', {
-        onClick: () => setRotated(r => !r),
-        title: 'Toggle screen rotation',
-        style: {
-          flexShrink:0, padding:'4px 12px', fontSize:13, fontWeight:500, lineHeight:1,
-          border: `1.5px solid ${rotated ? '#1D9E75' : '#aaa'}`,
-          background: rotated ? '#1D9E75' : 'transparent',
-          color: rotated ? '#fff' : '#555', borderRadius:8,
-          whiteSpace:'nowrap',
-        }
-      }, rotated ? '↻ on' : '↻ off'),
+      // Centre controls
+      h('div', { style:{ display:'flex', gap:5, flexShrink:0 } },
+        h('button', {
+          onClick: () => setRotated(r => !r),
+          style: {
+            padding:'4px 10px', fontSize:13, fontWeight:500,
+            border:`1.5px solid ${rotated ? '#1D9E75' : 'var(--bdr)'}`,
+            background: rotated ? '#1D9E75' : 'transparent',
+            color: rotated ? '#fff' : 'var(--text-sub)', borderRadius:8, whiteSpace:'nowrap',
+          }
+        }, rotated ? '↻ on' : '↻ off'),
+        h(DarkToggle, { dark, onToggle:toggleDark })
+      ),
       h('div', { style:{ flex:1, textAlign:'right' } },
-        h('div', { style:{ fontSize:11, color:'#888', lineHeight:1 } }, names[1]),
+        h('div', { style:{ fontSize:11, color:'var(--text-mut)', lineHeight:1 } }, names[1]),
         h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[1], lineHeight:1.1 } }, g.points[1])
       )
     ),
     h(Court, { g, names, onRotate:rotateTeam, onTapChip:tapChip }),
     edit && h(EditPanel, { edit, teamName:names[edit.t], onSave:saveEdit, onCancel:()=>setEdit(null) }),
+    // +1 buttons — big and prominent
     h('div', { style:{ flexShrink:0, display:'flex', gap:8 } },
       ...[0,1].map(t => h('button', { key:t, onClick:()=>score(t), style:{
-        flex:1, padding:'10px 0', background:TAS[t], color:'#fff',
-        border:'none', borderRadius:8, fontSize:15, fontWeight:600,
+        flex:1, padding:'16px 0', background:TAS[t], color:'#fff',
+        border:'none', borderRadius:10, fontSize:20, fontWeight:700,
       } }, '+1 ' + names[t]))
     ),
     h('div', { style:{ flexShrink:0, display:'flex', gap:8 } },
