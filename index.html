@@ -183,13 +183,13 @@ function Court({ g, names, onRotate, onTapChip }) {
   );
 }
 
-function EditPanel({ edit, teamName, onSave, onCancel }) {
+function EditPanel({ edit, onChange, teamName, onSave, onCancel }) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current) ref.current.focus(); }, []);
   return h('div', { style:{ flexShrink:0, background:'var(--bg-card)', border:'1.5px solid var(--bdr)', borderRadius:10, padding:'8px 10px' } },
     h('div', { style:{ fontSize:11, color:'var(--text-mut)', marginBottom:6 } }, `Sub in — ${teamName}, player ${ROMAN[edit.idx]}`),
     h('div', { style:{ display:'flex', gap:8 } },
-      h('input', { ref, value:edit.value, onChange:e=>edit.onChange(e.target.value),
+      h('input', { ref, value:edit.value, onChange:e=>onChange(e.target.value),
         onKeyDown:e=>{ if(e.key==='Enter') onSave(); if(e.key==='Escape') onCancel(); },
         style:{ flex:1, fontSize:15 }, placeholder:'New player name' }),
       h('button', { onClick:onSave,   style:{ padding:'0 16px', background:'#1D9E75', color:'#fff', border:'none', fontWeight:500 } }, 'Save'),
@@ -354,7 +354,7 @@ function App() {
       )
     ),
     h(Court, { g, names, onRotate:rotateTeam, onTapChip:tapChip }),
-    edit && h(EditPanel, { edit, teamName:names[edit.t], onSave:saveEdit, onCancel:()=>setEdit(null) }),
+    edit && h(EditPanel, { edit, onChange: val => setEdit(e => ({...e, value: val})), teamName:names[edit.t], onSave:saveEdit, onCancel:()=>setEdit(null) }),
     // +1 buttons — big and prominent
     h('div', { style:{ flexShrink:0, display:'flex', gap:8 } },
       ...[0,1].map(t => h('button', { key:t, onClick:()=>score(t), style:{
