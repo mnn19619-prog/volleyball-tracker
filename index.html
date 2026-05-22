@@ -13,50 +13,34 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; overflow: hidden; }
-
-    /* light mode (default) */
     :root {
-      --bg-body:  #ffffff;
-      --bg-surf:  #f4f4f4;
-      --bg-card:  #ffffff;
-      --bg-chip:  #f0f0f0;
-      --bg-inp:   #ffffff;
-      --text:     #000000;
-      --text-sub: #555555;
-      --text-mut: #888888;
-      --bdr:      #cccccc;
-      --bdr-card: #dddddd;
-      --net:      #cccccc;
+      --bg-body:#fff; --bg-surf:#f4f4f4; --bg-card:#fff; --bg-chip:#f0f0f0; --bg-inp:#fff;
+      --text:#000; --text-sub:#555; --text-mut:#888; --bdr:#ccc; --bdr-card:#ddd; --net:#ccc;
     }
-    /* dark mode — toggled via data-dark on <html> */
     html[data-dark] {
-      --bg-body:  #1a1a1a;
-      --bg-surf:  #252525;
-      --bg-card:  #252525;
-      --bg-chip:  #2a2a2a;
-      --bg-inp:   #2a2a2a;
-      --text:     #f0f0f0;
-      --text-sub: #bbbbbb;
-      --text-mut: #999999;
-      --bdr:      #444444;
-      --bdr-card: #444444;
-      --net:      #555555;
+      --bg-body:#1a1a1a; --bg-surf:#252525; --bg-card:#252525; --bg-chip:#2a2a2a; --bg-inp:#2a2a2a;
+      --text:#f0f0f0; --text-sub:#bbb; --text-mut:#999; --bdr:#444; --bdr-card:#444; --net:#555;
     }
-    body  { font-family: system-ui,-apple-system,sans-serif; background: var(--bg-body); color: var(--text); }
+    body  { font-family:system-ui,-apple-system,sans-serif; background:var(--bg-body); color:var(--text); }
     input { display:block; width:100%; padding:8px 10px; font-size:14px; font-family:inherit;
             border:1px solid var(--bdr); border-radius:7px; background:var(--bg-inp); color:var(--text); outline:none; }
     input:focus { border-color:#1D9E75; box-shadow:0 0 0 3px rgba(29,158,117,.15); }
-    button { font-family:inherit; font-size:14px; border-radius:8px; border:1px solid var(--bdr);
+    button { font-family:inherit; font-size:13px; border-radius:8px; border:1px solid var(--bdr);
              background:transparent; color:var(--text); cursor:pointer; transition:opacity .1s; }
     button:active { opacity:.7; }
 
     #setup { height:100%; overflow-y:auto; padding:14px; max-width:480px; margin:0 auto; }
-
+    #setup.rotated {
+      position:fixed; top:50%; left:50%; right:unset; bottom:unset;
+      width:100dvh; height:100dvw; padding:14px;
+      transform:translate(-50%,-50%) rotate(90deg);
+      overflow-y:auto;
+    }
     #game {
-      position:fixed; display:flex; flex-direction:column; gap:5px; overflow:hidden;
-      top:0; left:0; right:0; bottom:0;
-      padding: max(env(safe-area-inset-top),6px) max(env(safe-area-inset-right),8px)
-               max(env(safe-area-inset-bottom),6px) max(env(safe-area-inset-left),8px);
+      position:fixed; top:0; left:0; right:0; bottom:0;
+      display:flex; flex-direction:column; gap:5px; overflow:hidden;
+      padding:max(env(safe-area-inset-top),6px) max(env(safe-area-inset-right),8px)
+              max(env(safe-area-inset-bottom),6px) max(env(safe-area-inset-left),8px);
     }
     #game.rotated {
       top:50%; left:50%; right:unset; bottom:unset;
@@ -98,6 +82,18 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && window.__vbGameActive) acquireWakeLock();
 });
 
+// Canvas-based font size calculator — finds largest font where longest name fits chipWidth
+function calcFontSize(names, chipWidth) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const longest = names.reduce((a, b) => a.length >= b.length ? a : b, '');
+  for (let s = 26; s >= 8; s--) {
+    ctx.font = `500 ${s}px system-ui,-apple-system,sans-serif`;
+    if (ctx.measureText(longest).width <= chipWidth - 10) return s;
+  }
+  return 8;
+}
+
 const { useState, useRef, useEffect, createElement: h } = React;
 
 const ROMAN = ['I','II','III','IV','V','VI'];
@@ -112,7 +108,7 @@ const setterRoman = (g,t) => {
   return i < 0 ? null : ROMAN[(i - g.rotation[t] + 6) % 6];
 };
 
-function Chip({ name, roman, server, setter, accent, onTap }) {
+function Chip({ name, roman, server, setter, accent, onTap, fontSize }) {
   const cls = ['chip', server?'srv':setter?'set':''].filter(Boolean).join(' ');
   const plain = !server && !setter;
   return h('div', {
@@ -128,24 +124,39 @@ function Chip({ name, roman, server, setter, accent, onTap }) {
     h('div', { className:'lbl', style:{ fontSize:10, color:'var(--text-mut)', marginBottom:2, lineHeight:1 } },
       roman + (server?' ★':setter?' S':'')),
     h('div', { className:'nm', style:{
-      fontSize:16, fontWeight:(server||setter)?500:400, lineHeight:1.2,
-      color:'var(--text)',
-      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-      width:'100%', textAlign:'center', padding:'0 3px',
+      fontSize: fontSize || 16, fontWeight:(server||setter)?600:400, lineHeight:1.2,
+      color:'var(--text)', whiteSpace:'nowrap', width:'100%', textAlign:'center', padding:'0 3px',
     }}, name)
   );
 }
 
 function Court({ g, names, onRotate, onTapChip }) {
   const sr = [setterRoman(g,0), setterRoman(g,1)];
-  return h('div', {
+  const courtRef = useRef(null);
+  const [fontSize, setFontSize] = useState(16);
+
+  useEffect(() => {
+    if (!courtRef.current) return;
+    const recalc = () => {
+      if (!courtRef.current) return;
+      const w = courtRef.current.offsetWidth - 12; // 6px padding each side
+      const chipW = (w - 22 - 9) / 4;             // 22px net, 3×3px gaps
+      const allNames = [...g.players[0], ...g.players[1]];
+      setFontSize(calcFontSize(allNames, chipW));
+    };
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    ro.observe(courtRef.current);
+    return () => ro.disconnect();
+  }, [g.players]);
+
+  return h('div', { ref: courtRef,
     style: {
-      flex:1, minHeight:0,
-      background:'var(--bg-card)', border:'1px solid var(--bdr-card)',
-      borderRadius:10, padding:'5px 6px',
-      display:'flex', flexDirection:'column', gap:3,
+      flex:1, minHeight:0, background:'var(--bg-card)', border:'1px solid var(--bdr-card)',
+      borderRadius:10, padding:'5px 6px', display:'flex', flexDirection:'column', gap:3,
     }
   },
+    // Header row
     h('div', { style:{ display:'flex', alignItems:'center', gap:4, flexShrink:0 } },
       h('div', { style:{ flex:1, display:'flex', alignItems:'center', gap:3, minWidth:0, overflow:'hidden' } },
         h('div', { style:{ width:7, height:7, borderRadius:'50%', background:TA[0], flexShrink:0 } }),
@@ -163,12 +174,13 @@ function Court({ g, names, onRotate, onTapChip }) {
         h('div', { style:{ width:7, height:7, borderRadius:'50%', background:TA[1], flexShrink:0 } })
       )
     ),
+    // Court rows
     ...[0,1,2].map(row =>
       h('div', { key:row, style:{ flex:1, minHeight:0, display:'flex', gap:3 } },
         ...[0,1].map(col => {
           const pi=GA[row][col], idx=pidx(g,0,pi), pl=g.players[0][idx];
           const server = pi===0 && g.serving===0;
-          return h(Chip, { key:col, name:pl, roman:ROMAN[idx], server, setter:isSetter(pl)&&!server, accent:TA[0], onTap:()=>onTapChip(0,idx) });
+          return h(Chip, { key:col, name:pl, roman:ROMAN[idx], server, setter:isSetter(pl)&&!server, accent:TA[0], fontSize, onTap:()=>onTapChip(0,idx) });
         }),
         h('div', { style:{ width:22, flexShrink:0, display:'flex', alignItems:'stretch', justifyContent:'center', padding:'2px 0' } },
           h('div', { style:{ width:3, background:'var(--net)', borderRadius:2 } })
@@ -176,7 +188,7 @@ function Court({ g, names, onRotate, onTapChip }) {
         ...[0,1].map(col => {
           const pi=GB[row][col], idx=pidx(g,1,pi), pl=g.players[1][idx];
           const server = pi===0 && g.serving===1;
-          return h(Chip, { key:col, name:pl, roman:ROMAN[idx], server, setter:isSetter(pl)&&!server, accent:TA[1], onTap:()=>onTapChip(1,idx) });
+          return h(Chip, { key:col, name:pl, roman:ROMAN[idx], server, setter:isSetter(pl)&&!server, accent:TA[1], fontSize, onTap:()=>onTapChip(1,idx) });
         })
       )
     )
@@ -198,20 +210,6 @@ function EditPanel({ edit, onChange, teamName, onSave, onCancel }) {
   );
 }
 
-function DarkToggle({ dark, onToggle, style }) {
-  return h('button', {
-    onClick: onToggle,
-    style: {
-      padding:'4px 10px', fontSize:13, fontWeight:500, lineHeight:1,
-      border:`1.5px solid ${dark ? '#aaa' : '#aaa'}`,
-      background: 'transparent',
-      color: 'var(--text-sub)', borderRadius:8,
-      whiteSpace:'nowrap',
-      ...style,
-    }
-  }, dark ? '☀ Light' : '☾ Dark');
-}
-
 function App() {
   const [phase,    setPhase]    = useState('setup');
   const [names,    setNames]    = useState(['Team A','Team B']);
@@ -227,7 +225,6 @@ function App() {
     return window.matchMedia('(prefers-color-scheme:dark)').matches;
   });
 
-  // Apply dark mode to html element
   useEffect(() => {
     document.documentElement.toggleAttribute('data-dark', dark);
     localStorage.setItem('vb-dark', dark ? '1' : '0');
@@ -235,18 +232,15 @@ function App() {
 
   useEffect(() => {
     window.__vbGameActive = (phase === 'game');
-    if (phase === 'game') {
-      acquireWakeLock();
-      setRotated(window.innerHeight > window.innerWidth);
-    } else {
-      releaseWakeLock();
-      setRotated(false);
-    }
+    if (phase === 'game') acquireWakeLock();
+    else releaseWakeLock();
   }, [phase]);
 
+  // Auto-detect orientation in game mode only
   useEffect(() => {
     if (phase !== 'game') return;
     const update = () => setRotated(window.innerHeight > window.innerWidth);
+    update();
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
     return () => { window.removeEventListener('resize', update); window.removeEventListener('orientationchange', update); };
@@ -286,13 +280,25 @@ function App() {
     if (!hist.length) return;
     setEdit(null); setG(hist[hist.length-1]); setHist(h=>h.slice(0,-1));
   }
-  const toggleDark = () => setDark(d => !d);
+
+  const toggleDark    = () => setDark(d => !d);
+  const toggleRotated = () => setRotated(r => !r);
+
+  // Shared small control button style
+  const ctrlBtn = (active, activeColor) => ({
+    flex:1, padding:'5px 0', fontSize:12, fontWeight:500,
+    border:`1.5px solid ${active ? activeColor : 'var(--bdr)'}`,
+    background: active ? activeColor : 'transparent',
+    color: active ? '#fff' : 'var(--text-sub)',
+    borderRadius:8, whiteSpace:'nowrap',
+  });
 
   // ── Setup ──────────────────────────────────────────────────────────────────
-  if (phase === 'setup') return h('div', { id:'setup' },
-    h('div', { style:{ display:'flex', alignItems:'center', marginBottom:16 } },
-      h('h2', { style:{ fontSize:19, fontWeight:500, flex:1, color:'var(--text)' } }, 'Volleyball Rotation Tracker'),
-      h(DarkToggle, { dark, onToggle:toggleDark })
+  if (phase === 'setup') return h('div', { id:'setup', className: rotated ? 'rotated' : '' },
+    h('div', { style:{ display:'flex', alignItems:'center', gap:8, marginBottom:14 } },
+      h('h2', { style:{ fontSize:18, fontWeight:500, flex:1, color:'var(--text)' } }, 'VB Rotation Tracker'),
+      h('button', { onClick:toggleRotated, style: ctrlBtn(rotated, '#1D9E75') }, rotated ? '↻ on' : '↻ off'),
+      h('button', { onClick:toggleDark,    style: ctrlBtn(false, '') }, dark ? '☀' : '☾')
     ),
     h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 } },
       ...[0,1].map(t => h('div', { key:t, style:{ border:`2px solid ${TA[t]}`, borderRadius:10, padding:'11px 12px' } },
@@ -329,44 +335,42 @@ function App() {
 
   // ── Game ───────────────────────────────────────────────────────────────────
   return h('div', { id:'game', className: rotated ? 'rotated' : '' },
-    // Score bar
-    h('div', { style:{ flexShrink:0, display:'flex', alignItems:'center', background:'var(--bg-surf)', borderRadius:8, padding:'5px 8px', gap:6 } },
-      h('div', { style:{ flex:1 } },
-        h('div', { style:{ fontSize:11, color:'var(--text-mut)', lineHeight:1 } }, names[0]),
-        h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[0], lineHeight:1.1 } }, g.points[0])
+    // Top bar: scores + control buttons
+    h('div', { style:{ flexShrink:0, background:'var(--bg-surf)', borderRadius:8, padding:'5px 8px', display:'flex', flexDirection:'column', gap:5 } },
+      // Scores row
+      h('div', { style:{ display:'flex' } },
+        h('div', { style:{ flex:1 } },
+          h('div', { style:{ fontSize:11, color:'var(--text-mut)', lineHeight:1 } }, names[0]),
+          h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[0], lineHeight:1.1 } }, g.points[0])
+        ),
+        h('div', { style:{ flex:1, textAlign:'right' } },
+          h('div', { style:{ fontSize:11, color:'var(--text-mut)', lineHeight:1 } }, names[1]),
+          h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[1], lineHeight:1.1 } }, g.points[1])
+        )
       ),
-      // Centre controls
-      h('div', { style:{ display:'flex', gap:5, flexShrink:0 } },
+      // Controls row
+      h('div', { style:{ display:'flex', gap:5 } },
+        h('button', { onClick:toggleRotated, style: ctrlBtn(rotated, '#1D9E75') }, rotated ? '↻ on' : '↻ off'),
+        h('button', { onClick:toggleDark,    style: ctrlBtn(false, '') }, dark ? '☀ Light' : '☾ Dark'),
         h('button', {
-          onClick: () => setRotated(r => !r),
-          style: {
-            padding:'4px 10px', fontSize:13, fontWeight:500,
-            border:`1.5px solid ${rotated ? '#1D9E75' : 'var(--bdr)'}`,
-            background: rotated ? '#1D9E75' : 'transparent',
-            color: rotated ? '#fff' : 'var(--text-sub)', borderRadius:8, whiteSpace:'nowrap',
-          }
-        }, rotated ? '↻ on' : '↻ off'),
-        h(DarkToggle, { dark, onToggle:toggleDark })
-      ),
-      h('div', { style:{ flex:1, textAlign:'right' } },
-        h('div', { style:{ fontSize:11, color:'var(--text-mut)', lineHeight:1 } }, names[1]),
-        h('div', { style:{ fontSize:30, fontWeight:500, color:TAS[1], lineHeight:1.1 } }, g.points[1])
+          onClick:()=>{ if(window.confirm('Undo last action?')) undo(); },
+          disabled:!hist.length,
+          style:{ ...ctrlBtn(false,''), opacity: hist.length ? 1 : 0.4 }
+        }, '↩ Undo'),
+        h('button', {
+          onClick:()=>{ if(window.confirm('End current game and start a new one?')){ setPhase('setup'); setG(null); setHist([]); setEdit(null); } },
+          style: ctrlBtn(false,'')
+        }, 'New game')
       )
     ),
     h(Court, { g, names, onRotate:rotateTeam, onTapChip:tapChip }),
-    edit && h(EditPanel, { edit, onChange: val => setEdit(e => ({...e, value: val})), teamName:names[edit.t], onSave:saveEdit, onCancel:()=>setEdit(null) }),
-    // +1 buttons — big and prominent
+    edit && h(EditPanel, { edit, onChange:val=>setEdit(e=>({...e,value:val})), teamName:names[edit.t], onSave:saveEdit, onCancel:()=>setEdit(null) }),
+    // +1 buttons — full bottom, big and bold
     h('div', { style:{ flexShrink:0, display:'flex', gap:8 } },
       ...[0,1].map(t => h('button', { key:t, onClick:()=>score(t), style:{
         flex:1, padding:'16px 0', background:TAS[t], color:'#fff',
-        border:'none', borderRadius:10, fontSize:20, fontWeight:700,
+        border:'none', borderRadius:10, fontSize:20, fontWeight:700, letterSpacing:'.01em',
       } }, '+1 ' + names[t]))
-    ),
-    h('div', { style:{ flexShrink:0, display:'flex', gap:8 } },
-      h('button', { onClick:()=>{ if(window.confirm('Undo last action?')) undo(); }, disabled:!hist.length,
-        style:{ flex:1, padding:'7px 0', opacity:hist.length?1:0.4, fontSize:13 } }, '↩ Undo'),
-      h('button', { onClick:()=>{ if(window.confirm('End current game and start a new one?')){ setPhase('setup'); setG(null); setHist([]); setEdit(null); } },
-        style:{ flex:1, padding:'7px 0', fontSize:13 } }, 'New game')
     )
   );
 }
